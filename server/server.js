@@ -9,6 +9,13 @@ const app = express();
 app.use(cors(process.env.CLIENT_URL ? { origin: process.env.CLIENT_URL } : undefined));
 app.use(express.json());
 
+app.use('/api/expenses', (_req, res, next) => {
+  if (mongoose.connection.readyState !== 1) {
+    return res.status(503).json({ message: 'Database not connected yet. Check MONGO_URI and Atlas Network Access.' });
+  }
+  next();
+});
+
 app.use('/api/expenses', expenseRoutes);
 // Health check also reports the database state (0=disconnected, 1=connected, 2=connecting)
 app.get('/api/health', (_req, res) =>
@@ -22,6 +29,11 @@ const MONGO_URI =
 
 if (!MONGO_URI) {
   console.error('MONGO_URI is not set. Add it in your host\'s environment variables (use your MongoDB Atlas connection string).');
+  process.exit(1);
+}
+
+if (isProd && /(127\.0\.0\.1|localhost)/.test(MONGO_URI)) {
+  console.error('MONGO_URI points to localhost. In production it must be your MongoDB Atlas string (mongodb+srv://...).');
   process.exit(1);
 }
 
